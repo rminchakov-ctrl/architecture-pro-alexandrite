@@ -27,7 +27,7 @@ kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/
 ```bash
 kubectl create namespace observability
 kubectl create -f https://github.com/jaegertracing/jaeger-operator/releases/download/v1.51.0/jaeger-operator.yaml -n observability
-kubectl apply -f k8s/jaeger-instance.yaml
+kubectl apply -f k8s/jaeger-instance.yaml -n observability
 ```
 
 ### 4. Сборка и деплой сервисов
@@ -44,14 +44,14 @@ kubectl apply -f k8s/services.yaml
 
 ### Доступ к Jaeger UI
 ```bash
-kubectl port-forward svc/simplest-query 16686:16686
+kubectl port-forward -n observability svc/simplest-query 16686:16686
 ```
 Откройте в браузере: http://localhost:16686
 
 ### Тестирование сервисов
 ```bash
-# Вызов service-a, который вызывает service-b
-kubectl exec -it $(kubectl get pods -l app=service-a -o jsonpath='{.items[0].metadata.name}') -- wget -qO- http://service-a:8080
+# Вызов service-b, который вызывает service-a
+kubectl exec -it $(kubectl get pods -l app=service-b -o jsonpath='{.items[0].metadata.name}') -- wget -qO- 'http://service-b:8000/api/order?id=3'
 ```
 
 ## Структура проекта
