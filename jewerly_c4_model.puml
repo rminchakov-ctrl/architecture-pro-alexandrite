@@ -1,0 +1,49 @@
+@startuml C4_Deployment
+!include <C4/C4_Deployment>
+!include <C4/C4_Container>
+
+Person(dev, "Разработчик", "Просматривает метрики, логи и трейсы для отладки.")
+
+Deployment_Node(monitoring_node, "Узел мониторинга", "Виртуальная машина/докер-хост") {
+    Deployment_Node(otel_node, "Сбор телеметрии", "Докер контейнер") {
+        Container(otel_collector, "OTel Collector", "OpenTelemetry", "Центральный сборщик телеметрии.\nПринимает, обрабатывает и маршрутизирует\nметрики, логи и трейсы.")
+    }    
+    Deployment_Node(metrics_node, "Хранение метрик", "Докер контейнер") {
+        Container(prometheus, "Prometheus", "Prometheus", "Хранилище метрик временных рядов.\nПринимает метрики из OTel Collector.")
+    }
+    Deployment_Node(tracing_node, "Трейсинг", "Докер контейнер") {
+        Container(jaeger, "Jaeger", "Jaeger", "Сбор и анализ трейсов.\nИспользует Elasticsearch для хранения.")
+        Container(elasticsearch, "Elasticsearch", "Elasticsearch", "Хранилище индексов трейсов.")
+        Container(kibana, "Kibana", "Kibana", "Визуализация и анализ трейсов.")
+    }
+    Deployment_Node(logging_node, "Логирование", "Докер контейнер") {
+        Container(loki, "Loki", "Loki", "Хранение и поиск логов.\nПринимает логи из OTel Collector.")
+        Container(grafana, "Grafana", "Grafana", "Дашборды и визуализация.\nБерет данные из всех бэкендов.")
+    }
+}
+
+Deployment_Node(app_node, "Бизнес-приложение", "Виртуальная машина/докер-хост") {
+    Container(app1, "Service", "Java/Go", "Микросервис.\nИнструментирован с помощью OpenTelemetry SDK.\nОтправляет метрики, логи и трейсы.")
+    Deployment_Node(agent_node, "Агенты сбора", "DaemonSet") {
+        Container(otel_agent, "OTel Agent", "OpenTelemetry", "Сбор метрик ОС и прием данных\nот приложений. Отправляет в Collector.")
+    }
+}
+
+Rel(dev, grafana, "Просматривает дашборды", "HTTPS/HTTP")
+Rel(dev, kibana, "Анализирует трейсы", "HTTPS/HTTP")
+
+Rel(grafana, prometheus, "Запрашивает метрики", "HTTP")
+Rel(grafana, loki, "Запрашивает логи", "HTTP")
+Rel(kibana, elasticsearch, "Запрашивает данные трейсов", "HTTP")
+
+Rel(otel_collector, prometheus, "Экспорт метрик", "HTTP")
+Rel(otel_collector, jaeger, "Экспорт трейсов", "HTTP")
+Rel(otel_collector, loki, "Экспорт логов", "HTTP")
+
+Rel(jaeger, elasticsearch, "Сохраняет и читает трейсы", "HTTP")
+
+Rel(app1, otel_agent, "Отправляет телеметрию\n(метрики, логи, трейсы)", "gRPC/HTTP")
+
+Rel(otel_agent, otel_collector, "Пересылает телеметрию", "gRPC/HTTP")
+
+@enduml
