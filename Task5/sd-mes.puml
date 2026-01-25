@@ -1,0 +1,30 @@
+@startuml sequence_diagram_mes
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Sequence.puml
+
+title Диаграмма последовательности: Кеш Write-Through между сервисом MES и хранилищем MES
+
+actor "Пользователь" as user
+boundary "MES сервис" as service
+control "Кеш-сервис\n(Write-Through)" as cache
+boundary "MES хранилище" as storage
+
+user -> service: Запрос на запись данных
+service -> cache: Обновление данных в кеше
+cache -> storage: Синхронная запись данных
+storage --> cache: Подтверждение записи
+cache --> service: Подтверждение обновления кеша
+service --> user: Подтверждение операции
+
+user -> service: Запрос на чтение данных
+service -> cache: Получить данные
+alt Данные в кеше
+    cache --> service: Возврат данных из кеша
+else Данных нет в кеше
+    cache -> storage: Получить данные
+    storage --> cache: Возврат данных
+    cache --> service: Возврат данных и кеширование
+end
+service --> user: Возврат данных
+
+@enduml

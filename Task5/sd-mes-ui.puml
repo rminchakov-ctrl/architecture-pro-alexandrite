@@ -1,0 +1,32 @@
+@startuml sequence_diagram_mes_ui
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Sequence.puml
+
+title Диаграмма последовательности: Кеш Cache-Aside между MES UI и MES Сервисом
+
+actor "Пользователь" as user
+boundary "MES UI" as ui
+control "Кеш-сервис\n(Cache-Aside)" as cache
+boundary "MES Сервис" as service
+
+user -> ui: Запрос данных
+ui -> cache: Получить данные
+
+alt Данные в кеше (Cache Hit)
+    cache --> ui: Возврат данных из кеша
+else Данных нет в кеше (Cache Miss)
+    cache -> service: Получить данные
+    service --> cache: Возврат данных
+    cache --> ui: Возврат данных
+    ui -> cache: Сохранить в кеш (асинхронно)
+end
+
+ui --> user: Отображение данных
+
+user -> ui: Запрос на изменение
+ui -> service: Отправить данные для записи
+service --> ui: Подтверждение записи
+ui -> cache: Инвалидировать/Обновить кеш (асинхронно)
+ui --> user: Подтверждение операции
+
+@enduml
